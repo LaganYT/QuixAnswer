@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuixAnswer Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 350px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #1a1a1a;
+      color: #ffffff;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: #00D4B5;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #e0e0e0;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #00D4B5;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #00D4B5;
+      border: none;
+      border-radius: 8px;
+      color: #1a1a1a;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: #00e6c7;
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+
+    .status.success {
+      background: rgba(0, 212, 181, 0.2);
+      color: #00D4B5;
+      display: block;
+    }
+
+    .status.error {
+      background: rgba(255, 77, 77, 0.2);
+      color: #ff4d4d;
+      display: block;
+    }
+
+    .info-box {
+      background: #252525;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 20px;
+      border-left: 3px solid #00D4B5;
+    }
+
+    .info-box p {
+      font-size: 13px;
+      color: #b0b0b0;
+      line-height: 1.6;
+    }
+
+    .info-box a {
+      color: #00D4B5;
+      text-decoration: none;
+    }
+
+    .info-box a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#1a1a1a"/>
+        <path d="M2 17L12 22L22 17M2 12L12 17L22 12" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1>QuixAnswer</h1>
+  </div>
+
+  <p class="subtitle">Configure your AI assistant</p>
+
+  <div class="form-group">
+    <label for="apiKey">Groq API Key</label>
+    <input type="password" id="apiKey" placeholder="gsk_...">
+  </div>
+
+  <button class="btn" id="saveBtn">Save Settings</button>
+
+  <div id="status" class="status"></div>
+
+  <div class="info-box">
+    <p>💡 Get your FREE API key from <a href="https://console.groq.com/keys" target="_blank">Groq Console</a></p>
+    <p style="margin-top: 8px;">Click the floating button on any page to open QuixAnswer!</p>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+

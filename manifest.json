@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "QuixAnswer",
+  "version": "1.0.0",
+  "description": "AI chatbot that provides quick and simple answers in your Chrome sidebar",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["sidebar.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open QuixAnswer"
+  },
+  "icons": {
+    "128": "icons/icon.png"
+  }
+}
+
