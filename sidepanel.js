@@ -15,6 +15,11 @@
     const result = await chrome.storage.local.get(['apiKey']);
     if (!result.apiKey) {
       showSetupMessage();
+    } else {
+      // Add initial greeting as the first AI message if none exist
+      if (messagesContainer.children.length === 0) {
+        addMessage('How can I help?', false);
+      }
     }
   }
 
@@ -130,7 +135,7 @@
       const setupMessage = document.querySelector('.setup-message');
       if (setupMessage) {
         messagesContainer.innerHTML = '';
-        addMessage('API key configured! How can I help you?', false);
+        addMessage('How can I help?', false);
       }
     }
   });
