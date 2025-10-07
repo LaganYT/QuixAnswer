@@ -2,7 +2,6 @@
 #quixanswer-float-button {
   all: initial;
   position: fixed;
-  top: 50%;
   right: -64px; /* Start fully hidden - JS will control this */
   transform: translateY(-50%);
   z-index: 2147483647;
@@ -11,6 +10,23 @@
   gap: 16px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   transition: right 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Position modifiers */
+#quixanswer-float-button.pos-top {
+  top: 24px;
+  transform: translateY(0);
+}
+
+#quixanswer-float-button.pos-middle {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+#quixanswer-float-button.pos-bottom {
+  bottom: 24px;
+  top: auto;
+  transform: translateY(0);
 }
 
 #quixanswer-float-button.hidden {

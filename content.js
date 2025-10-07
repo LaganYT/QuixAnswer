@@ -21,6 +21,20 @@
 
   document.body.appendChild(floatContainer);
 
+  // Read and apply saved position
+  const POSITION_KEY = 'openerPosition';
+  function applyPositionClass(position) {
+    floatContainer.classList.remove('pos-top', 'pos-middle', 'pos-bottom');
+    const normalized = (position || 'middle').toLowerCase();
+    if (normalized === 'top') floatContainer.classList.add('pos-top');
+    else if (normalized === 'bottom') floatContainer.classList.add('pos-bottom');
+    else floatContainer.classList.add('pos-middle');
+  }
+
+  chrome.storage.local.get([POSITION_KEY], (res) => {
+    applyPositionClass(res[POSITION_KEY] || 'middle');
+  });
+
   // Proximity effect logic
   const button = document.getElementById('quixanswer-float-button');
   const proximityThreshold = 200; // How close the mouse needs to be to trigger the effect (in pixels)
@@ -55,6 +69,13 @@
     }
     sendResponse({ success: true });
     return true;
+  });
+
+  // Watch for storage changes to update position live
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[POSITION_KEY]) {
+      applyPositionClass(changes[POSITION_KEY].newValue);
+    }
   });
 
 })();
