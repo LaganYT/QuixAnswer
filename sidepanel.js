@@ -239,19 +239,13 @@
     delete all[chatId];
     await chrome.storage.local.set({ [STORAGE_KEY]: all });
     
-    // If deleting current chat, switch to another or create new
+    // Always create a new chat after deleting
     if (chatId === getCurrentChatId()) {
-      const remaining = Object.keys(all);
-      if (remaining.length > 0) {
-        await switchToChat(remaining[0]);
-      } else {
-        // Create new chat if none left
-        const newId = `chat_${Date.now()}`;
-        await setCurrentChatId(newId);
-        messagesContainer.innerHTML = '';
-        addMessage('How can I help?', false);
-        await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
-      }
+      const newId = `chat_${Date.now()}`;
+      await setCurrentChatId(newId);
+      messagesContainer.innerHTML = '';
+      addMessage('How can I help?', false);
+      await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
     } else {
       await updateHistoryList();
     }
@@ -357,14 +351,17 @@
     }
   });
 
-  // Load and render stored history on open
+  // Always start with a new chat when opening sidebar
   initCurrentChat().then(async () => {
     await updateHistoryList();
-    const history = await renderHistory();
-    if (history.length === 0) {
-      addMessage('How can I help?', false);
-      await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
-    }
+    
+    // Create new chat on open
+    const newId = `chat_${Date.now()}`;
+    await setCurrentChatId(newId);
+    messagesContainer.innerHTML = '';
+    addMessage('How can I help?', false);
+    await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+    
     input.focus();
   });
 
