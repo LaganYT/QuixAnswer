@@ -11,6 +11,9 @@
   const historyToggleBtn = document.getElementById('history-toggle-btn');
   const sidebarOverlay = document.getElementById('sidebar-overlay');
   const chatHistorySidebar = document.getElementById('chat-history-sidebar');
+  const deleteModalOverlay = document.getElementById('delete-modal-overlay');
+  const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+  const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
 
   // Check if API key is set
   checkApiKey();
@@ -163,8 +166,42 @@
     input.focus();
   }
 
+  // Delete confirmation modal
+  function showDeleteModal() {
+    return new Promise((resolve) => {
+      deleteModalOverlay.classList.add('active');
+      
+      const handleConfirm = () => {
+        deleteModalOverlay.classList.remove('active');
+        deleteConfirmBtn.removeEventListener('click', handleConfirm);
+        deleteCancelBtn.removeEventListener('click', handleCancel);
+        deleteModalOverlay.removeEventListener('click', handleOverlayClick);
+        resolve(true);
+      };
+      
+      const handleCancel = () => {
+        deleteModalOverlay.classList.remove('active');
+        deleteConfirmBtn.removeEventListener('click', handleConfirm);
+        deleteCancelBtn.removeEventListener('click', handleCancel);
+        deleteModalOverlay.removeEventListener('click', handleOverlayClick);
+        resolve(false);
+      };
+
+      const handleOverlayClick = (e) => {
+        if (e.target === deleteModalOverlay) {
+          handleCancel();
+        }
+      };
+      
+      deleteConfirmBtn.addEventListener('click', handleConfirm);
+      deleteCancelBtn.addEventListener('click', handleCancel);
+      deleteModalOverlay.addEventListener('click', handleOverlayClick);
+    });
+  }
+
   async function deleteChat(chatId) {
-    if (!confirm('Delete this chat?')) return;
+    const confirmed = await showDeleteModal();
+    if (!confirmed) return;
     
     const stored = await chrome.storage.local.get([STORAGE_KEY]);
     const all = stored[STORAGE_KEY] || {};

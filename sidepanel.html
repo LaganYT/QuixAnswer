@@ -432,15 +432,97 @@
       background: #00e6c7;
       transform: translateY(-1px);
     }
+
+    /* Delete confirmation modal */
+    .delete-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .delete-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .delete-modal {
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      transform: scale(0.9);
+      transition: transform 0.2s ease;
+    }
+
+    .delete-modal-overlay.active .delete-modal {
+      transform: scale(1);
+    }
+
+    .delete-modal-header {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .delete-modal-message {
+      font-size: 14px;
+      color: #ccc;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .delete-modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-btn-cancel {
+      background: #3a3a3a;
+      color: #fff;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #4a4a4a;
+    }
+
+    .modal-btn-delete {
+      background: #ff6b6b;
+      color: #fff;
+    }
+
+    .modal-btn-delete:hover {
+      background: #ff5252;
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <button id="history-toggle-btn" class="history-toggle-btn" title="Chat history">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 6H17M3 10H17M3 14H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
     <div class="logo">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#1a1a1a"/>
@@ -453,6 +535,11 @@
         <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
+    <button id="history-toggle-btn" class="history-toggle-btn" title="Chat history">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 6H17M3 10H17M3 14H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
   </div>
 
   <!-- Sidebar overlay backdrop -->
@@ -463,6 +550,18 @@
     <div class="history-header">Chat History</div>
     <div class="history-list" id="history-list"></div>
   </aside>
+
+  <!-- Delete confirmation modal -->
+  <div class="delete-modal-overlay" id="delete-modal-overlay">
+    <div class="delete-modal">
+      <div class="delete-modal-header">Delete Chat?</div>
+      <div class="delete-modal-message">This will permanently delete this conversation. This action cannot be undone.</div>
+      <div class="delete-modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="delete-cancel-btn">Cancel</button>
+        <button class="modal-btn modal-btn-delete" id="delete-confirm-btn">Delete</button>
+      </div>
+    </div>
+  </div>
 
   <div class="main-container">
     <div id="chat-container">
