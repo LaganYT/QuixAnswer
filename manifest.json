@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QuixAnswer",
-  "version": "1.0.0",
+  "version": "2025.10.07",
   "description": "AI chatbot that provides quick and simple answers in your Chrome sidebar",
   "permissions": [
     "storage",

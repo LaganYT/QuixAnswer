@@ -15,6 +15,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
     return true;
   }
+
+  if (request.type === 'OPEN_SETTINGS') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
+    sendResponse({ success: true });
+    return true;
+  }
   
   if (request.type === 'GET_AI_RESPONSE') {
     getAIResponse(request.question)
