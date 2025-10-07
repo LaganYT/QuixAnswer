@@ -21,6 +21,24 @@
 
   document.body.appendChild(floatContainer);
 
+  // Proximity effect logic
+  const button = document.getElementById('quixanswer-float-button');
+  const proximityThreshold = 200; // How close the mouse needs to be to trigger the effect (in pixels)
+  const hiddenRight = -64;      // The button's fully hidden position (in pixels)
+  const visibleRight = -40;     // The button's fully visible "peek" position (in pixels)
+
+  document.addEventListener('mousemove', (e) => {
+    const distanceFromRight = window.innerWidth - e.clientX;
+
+    if (distanceFromRight <= proximityThreshold) {
+      const proximity = 1 - (distanceFromRight / proximityThreshold);
+      const newRight = hiddenRight + (visibleRight - hiddenRight) * proximity;
+      button.style.right = `${Math.min(visibleRight, newRight)}px`;
+    } else {
+      button.style.right = `${hiddenRight}px`;
+    }
+  });
+
   // Event listeners
   const openBtn = document.getElementById('quixanswer-open-btn');
 

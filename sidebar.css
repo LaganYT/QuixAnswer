@@ -2,16 +2,15 @@
 #quixanswer-float-button {
   all: initial;
   position: fixed;
-  top: 55%;
-  right: 0px;
+  top: 50%;
+  right: -64px; /* Start fully hidden - JS will control this */
   transform: translateY(-50%);
   z-index: 2147483647;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  padding-right: 16px;
-  padding-left: 60px;
+  transition: right 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #quixanswer-float-button.hidden {
@@ -26,55 +25,55 @@
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 16px;
   cursor: pointer;
-  transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  transform: translateX(100px) scale(0.3);
-}
-
-/* Show buttons on hover */
-#quixanswer-float-button:hover .quixanswer-main-btn,
-#quixanswer-float-button:hover .quixanswer-settings-btn {
-  opacity: 1;
-  transform: translateX(0) scale(1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  position: relative;
 }
 
 .quixanswer-main-btn {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   background: #00D4B5;
-  transition-delay: 0.1s;
+  border-radius: 32px 0 0 32px;
 }
 
-#quixanswer-float-button:hover .quixanswer-main-btn:hover {
+.quixanswer-main-btn svg {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover effects on the button itself */
+.quixanswer-main-btn:hover {
   background: #00e6c7;
-  transform: translateX(0) scale(1.1);
-  box-shadow: 0 6px 20px rgba(0, 212, 181, 0.4);
+  transform: translateX(-40px); /* Pop out more on hover */
+  box-shadow: 0 6px 24px rgba(0, 212, 181, 0.5);
+}
+
+.quixanswer-main-btn:hover svg {
+  transform: scale(1.15);
 }
 
 .quixanswer-settings-btn {
-  width: 40px;
-  height: 40px;
-  background: #3a3a3a;
-  transition-delay: 0s;
+  width: 48px;
+  height: 48px;
+  background: #2a2a2a;
+  border-radius: 24px 0 0 24px;
 }
 
 .quixanswer-settings-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
 
-#quixanswer-float-button:hover .quixanswer-settings-btn:hover {
-  background: #4a4a4a;
-  transform: translateX(0) scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+.quixanswer-settings-btn:hover {
+  background: #3a3a3a;
+  transform: translateX(-40px); /* Pop out more on hover */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
-#quixanswer-float-button:hover .quixanswer-main-btn:active,
-#quixanswer-float-button:hover .quixanswer-settings-btn:active {
-  transform: translateX(0) scale(0.95);
+.quixanswer-main-btn:active,
+.quixanswer-settings-btn:active {
+  transform: translateX(-40px) scale(0.95);
 }
 
 .quixanswer-header {
