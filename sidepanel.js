@@ -7,6 +7,10 @@
   const sendBtn = document.getElementById('send-btn');
   const messagesContainer = document.getElementById('messages');
   const chatContainer = document.getElementById('chat-container');
+  const historyListEl = document.getElementById('history-list');
+  const historyToggleBtn = document.getElementById('history-toggle-btn');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  const chatHistorySidebar = document.getElementById('chat-history-sidebar');
 
   // Check if API key is set
   checkApiKey();
@@ -74,6 +78,115 @@
     const all = stored[STORAGE_KEY] || {};
     all[chatId] = history;
     await chrome.storage.local.set({ [STORAGE_KEY]: all });
+    await updateHistoryList();
+  }
+
+  async function getAllChats() {
+    const stored = await chrome.storage.local.get([STORAGE_KEY]);
+    const all = stored[STORAGE_KEY] || {};
+    return Object.entries(all).map(([id, messages]) => ({
+      id,
+      messages,
+      preview: getChatPreview(messages),
+      timestamp: getChatTimestamp(id)
+    })).sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  function getChatPreview(messages) {
+    // Get first user message or use default
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    if (firstUserMsg) {
+      return firstUserMsg.content.substring(0, 40) + (firstUserMsg.content.length > 40 ? '...' : '');
+    }
+    return 'New Chat';
+  }
+
+  function getChatTimestamp(chatId) {
+    // Extract timestamp from chat_<timestamp> format
+    const match = chatId.match(/chat_(\d+)/);
+    return match ? parseInt(match[1]) : 0;
+  }
+
+  // Sidebar toggle functionality
+  function toggleSidebar(open) {
+    if (open) {
+      chatHistorySidebar.classList.add('open');
+      sidebarOverlay.classList.add('active');
+    } else {
+      chatHistorySidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('active');
+    }
+  }
+
+  async function updateHistoryList() {
+    const chats = await getAllChats();
+    historyListEl.innerHTML = '';
+    
+    for (const chat of chats) {
+      const item = document.createElement('div');
+      item.className = 'history-item' + (chat.id === getCurrentChatId() ? ' active' : '');
+      item.innerHTML = `
+        <div class="history-item-text">${chat.preview}</div>
+        <button class="history-item-delete" data-chat-id="${chat.id}" title="Delete chat">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 2L12 12M2 12L12 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      `;
+      
+      // Click to switch chat
+      item.addEventListener('click', async (e) => {
+        if (e.target.closest('.history-item-delete')) return;
+        await switchToChat(chat.id);
+      });
+      
+      // Delete button
+      const deleteBtn = item.querySelector('.history-item-delete');
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await deleteChat(chat.id);
+      });
+      
+      historyListEl.appendChild(item);
+    }
+  }
+
+  async function switchToChat(chatId) {
+    await setCurrentChatId(chatId);
+    const history = await loadHistory();
+    messagesContainer.innerHTML = '';
+    for (const msg of history) {
+      addMessage(msg.content, msg.role === 'user');
+    }
+    await updateHistoryList();
+    toggleSidebar(false); // Close sidebar after switching
+    input.focus();
+  }
+
+  async function deleteChat(chatId) {
+    if (!confirm('Delete this chat?')) return;
+    
+    const stored = await chrome.storage.local.get([STORAGE_KEY]);
+    const all = stored[STORAGE_KEY] || {};
+    delete all[chatId];
+    await chrome.storage.local.set({ [STORAGE_KEY]: all });
+    
+    // If deleting current chat, switch to another or create new
+    if (chatId === getCurrentChatId()) {
+      const remaining = Object.keys(all);
+      if (remaining.length > 0) {
+        await switchToChat(remaining[0]);
+      } else {
+        // Create new chat if none left
+        const newId = `chat_${Date.now()}`;
+        await setCurrentChatId(newId);
+        messagesContainer.innerHTML = '';
+        addMessage('How can I help?', false);
+        await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+      }
+    } else {
+      await updateHistoryList();
+    }
   }
 
   async function renderHistory() {
@@ -177,14 +290,24 @@
   });
 
   // Load and render stored history on open
-  initCurrentChat().then(() => {
-    renderHistory().then((history) => {
-      if (history.length === 0) {
-        addMessage('How can I help?', false);
-        saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
-      }
-      input.focus();
-    });
+  initCurrentChat().then(async () => {
+    await updateHistoryList();
+    const history = await renderHistory();
+    if (history.length === 0) {
+      addMessage('How can I help?', false);
+      await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+    }
+    input.focus();
+  });
+
+  // Event listeners for sidebar toggle
+  historyToggleBtn.addEventListener('click', () => {
+    const isOpen = chatHistorySidebar.classList.contains('open');
+    toggleSidebar(!isOpen);
+  });
+
+  sidebarOverlay.addEventListener('click', () => {
+    toggleSidebar(false);
   });
 
   // New Chat button: create a new chat id and reset view/history
@@ -196,6 +319,7 @@
       messagesContainer.innerHTML = '';
       addMessage('How can I help?', false);
       await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+      await updateHistoryList();
       input.value = '';
       input.focus();
     });
