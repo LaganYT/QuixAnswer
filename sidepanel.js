@@ -38,7 +38,37 @@
     });
   }
 
-  // Chat functionality
+  // Chat functionality + memory
+  const STORAGE_KEY = 'quix_chat_history';
+
+  function getCurrentChatId() {
+    // Single-threaded chat for now; can expand to multi-chat later
+    return 'default';
+  }
+
+  async function loadHistory() {
+    const chatId = getCurrentChatId();
+    const stored = await chrome.storage.local.get([STORAGE_KEY]);
+    const all = stored[STORAGE_KEY] || {};
+    return all[chatId] || [];
+  }
+
+  async function saveHistory(history) {
+    const chatId = getCurrentChatId();
+    const stored = await chrome.storage.local.get([STORAGE_KEY]);
+    const all = stored[STORAGE_KEY] || {};
+    all[chatId] = history;
+    await chrome.storage.local.set({ [STORAGE_KEY]: all });
+  }
+
+  async function renderHistory() {
+    const history = await loadHistory();
+    messagesContainer.innerHTML = '';
+    for (const msg of history) {
+      addMessage(msg.content, msg.role === 'user');
+    }
+    return history;
+  }
   function addMessage(text, isUser = false) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
@@ -57,6 +87,7 @@
     
     // Scroll to bottom
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    return { role: isUser ? 'user' : 'assistant', content: text };
   }
 
   function addLoadingMessage() {
@@ -86,7 +117,7 @@
     if (!question) return;
 
     // Add user message
-    addMessage(question, true);
+    const userMsg = addMessage(question, true);
     input.value = '';
 
     // Disable send button
@@ -95,15 +126,20 @@
     // Show loading
     const loadingMsg = addLoadingMessage();
 
-    // Get AI response
+    // Prepare history and send to background
+    const prior = await loadHistory();
+    const context = [...prior, userMsg];
+    await saveHistory(context);
+
     chrome.runtime.sendMessage(
-      { type: 'GET_AI_RESPONSE', question: question },
+      { type: 'GET_AI_RESPONSE', question: question, messages: context },
       (response) => {
         removeLoadingMessage(loadingMsg);
         sendBtn.disabled = false;
         
         if (response && response.success) {
-          addMessage(response.answer, false);
+          const aiMsg = addMessage(response.answer, false);
+          saveHistory([...context, aiMsg]);
         } else {
           const errorMsg = response?.error || 'Failed to get response';
           addMessage(`Error: ${errorMsg}`, false);
@@ -125,8 +161,14 @@
     }
   });
 
-  // Focus on input when panel opens
-  input.focus();
+  // Load and render stored history on open
+  renderHistory().then((history) => {
+    if (history.length === 0) {
+      addMessage('How can I help?', false);
+      saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+    }
+    input.focus();
+  });
 
   // Listen for storage changes (when API key is added)
   chrome.storage.onChanged.addListener((changes, namespace) => {

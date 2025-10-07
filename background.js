@@ -36,7 +36,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.type === 'GET_AI_RESPONSE') {
-    getAIResponse(request.question)
+    getAIResponse(request.question, request.messages)
       .then(response => sendResponse({ success: true, answer: response }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep the message channel open for async response
@@ -44,7 +44,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // AI Response function using Groq API
-async function getAIResponse(question) {
+async function getAIResponse(question, messages) {
   // Get API key from storage
   const result = await chrome.storage.local.get(['apiKey']);
   const apiKey = result.apiKey;
@@ -67,10 +67,9 @@ async function getAIResponse(question) {
             role: 'system',
             content: 'You are QuixAnswer, a helpful AI assistant that provides quick, concise, and simple answers. Keep responses brief and to the point.'
           },
-          {
-            role: 'user',
-            content: question
-          }
+          ...(Array.isArray(messages) && messages.length > 0
+            ? messages
+            : [{ role: 'user', content: question }])
         ],
         max_tokens: 500,
         temperature: 0.7
