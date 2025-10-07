@@ -9,7 +9,7 @@
     "sidePanel"
   ],
   "host_permissions": [
-    "https://*/*"
+    "https://api.groq.com/*"
   ],
   "background": {
     "service_worker": "background.js"
