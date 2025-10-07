@@ -31,39 +31,24 @@
   const openBtn = document.getElementById('quixanswer-open-btn');
   const settingsBtn = document.getElementById('quixanswer-settings-btn');
 
-  function setupClickDetector() {
-    document.addEventListener('click', () => {
-      floatContainer.classList.remove('hidden');
-    }, { once: true, capture: true });
-  }
-
   openBtn.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
-    // Hide buttons when sidebar opens
-    floatContainer.classList.add('hidden');
-    // Set up click detector for when sidebar closes
-    setupClickDetector();
   });
 
   settingsBtn.addEventListener('click', () => {
-    // Open settings in a new tab via background script
     chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS' });
   });
 
-  // Listen for messages to show buttons
+  // Listen for messages from the background script
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'SHOW_BUTTONS') {
       floatContainer.classList.remove('hidden');
-      sendResponse({ success: true });
+    } else if (request.type === 'HIDE_BUTTONS') {
+      floatContainer.classList.add('hidden');
     }
+    sendResponse({ success: true });
+    return true;
   });
 
-  // Show buttons when page becomes focused again (sidebar likely closed)
-  window.addEventListener('focus', () => {
-    // Small delay to ensure sidebar is fully closed
-    setTimeout(() => {
-      floatContainer.classList.remove('hidden');
-    }, 100);
-  });
 })();
 

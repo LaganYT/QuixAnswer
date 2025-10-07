@@ -406,12 +406,16 @@
     }
   });
 
+  // Establish connection with background script to detect when sidebar closes
+  chrome.runtime.connect({ name: 'sidepanel' });
+  
   // Notify when sidebar might be closing and cleanup empty chats
   window.addEventListener('pagehide', async () => {
     // Clean up empty chat before closing
     const currentId = getCurrentChatId();
     await deleteEmptyChat(currentId);
-    chrome.runtime.sendMessage({ type: 'SIDEBAR_CLOSED' });
+    // This is no longer needed, disconnection port will handle it
+    // chrome.runtime.sendMessage({ type: 'SIDEBAR_CLOSED' });
   });
 })();
 

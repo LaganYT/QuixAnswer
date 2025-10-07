@@ -11,8 +11,25 @@ chrome.action.onClicked.addListener((tab) => {
 // Listen for messages from content script and side panel
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'OPEN_SIDE_PANEL') {
-    chrome.sidePanel.open({ windowId: sender.tab.windowId });
-    sendResponse({ success: true });
+    // Get the current window ID to notify tabs
+    const windowId = sender.tab ? sender.tab.windowId : undefined;
+    
+    chrome.sidePanel.open({ windowId: windowId })
+      .then(() => {
+        // Notify all tabs in the window that sidebar is open (hide buttons)
+        if (windowId) {
+          chrome.tabs.query({ windowId: windowId }, (tabs) => {
+            tabs.forEach(tab => {
+              chrome.tabs.sendMessage(tab.id, { type: 'HIDE_BUTTONS' }).catch(() => {});
+            });
+          });
+        }
+        sendResponse({ success: true });
+      })
+      .catch((error) => {
+        console.error('Error opening side panel:', error);
+        sendResponse({ success: false, error: error.message });
+      });
     return true;
   }
 
@@ -23,14 +40,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'SIDEBAR_CLOSED') {
-    // Notify all tabs in the window that sidebar is closed
-    if (sender.tab) {
-      chrome.tabs.query({ windowId: sender.tab.windowId }, (tabs) => {
-        tabs.forEach(tab => {
-          chrome.tabs.sendMessage(tab.id, { type: 'SHOW_BUTTONS' }).catch(() => {});
-        });
+    // Notify all tabs in the window that sidebar is closed (show buttons)
+    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+      tabs.forEach(tab => {
+        chrome.tabs.sendMessage(tab.id, { type: 'SHOW_BUTTONS' }).catch(() => {});
       });
-    }
+    });
     sendResponse({ success: true });
     return true;
   }
@@ -40,6 +55,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then(response => sendResponse({ success: true, answer: response }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep the message channel open for async response
+  }
+});
+
+// Listen for side panel connections
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'sidepanel') {
+    // When side panel disconnects, show the buttons again
+    port.onDisconnect.addListener(() => {
+      chrome.tabs.query({ currentWindow: true }, (tabs) => {
+        tabs.forEach(tab => {
+          chrome.tabs.sendMessage(tab.id, { type: 'SHOW_BUTTONS' }).catch(() => {});
+        });
+      });
+    });
   }
 });
 
