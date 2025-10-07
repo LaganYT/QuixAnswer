@@ -134,5 +134,10 @@
       }
     }
   });
+
+  // Notify when sidebar might be closing
+  window.addEventListener('pagehide', () => {
+    chrome.runtime.sendMessage({ type: 'SIDEBAR_CLOSED' });
+  });
 })();
 

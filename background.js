@@ -21,6 +21,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
     return true;
   }
+
+  if (request.type === 'SIDEBAR_CLOSED') {
+    // Notify all tabs in the window that sidebar is closed
+    if (sender.tab) {
+      chrome.tabs.query({ windowId: sender.tab.windowId }, (tabs) => {
+        tabs.forEach(tab => {
+          chrome.tabs.sendMessage(tab.id, { type: 'SHOW_BUTTONS' }).catch(() => {});
+        });
+      });
+    }
+    sendResponse({ success: true });
+    return true;
+  }
   
   if (request.type === 'GET_AI_RESPONSE') {
     getAIResponse(request.question)
