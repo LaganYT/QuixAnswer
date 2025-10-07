@@ -40,10 +40,25 @@
 
   // Chat functionality + memory
   const STORAGE_KEY = 'quix_chat_history';
+  const CURRENT_CHAT_KEY = 'quix_current_chat_id';
+  let currentChatId = 'default';
+
+  async function initCurrentChat() {
+    const stored = await chrome.storage.local.get([CURRENT_CHAT_KEY]);
+    if (stored[CURRENT_CHAT_KEY]) {
+      currentChatId = stored[CURRENT_CHAT_KEY];
+    } else {
+      await chrome.storage.local.set({ [CURRENT_CHAT_KEY]: currentChatId });
+    }
+  }
 
   function getCurrentChatId() {
-    // Single-threaded chat for now; can expand to multi-chat later
-    return 'default';
+    return currentChatId;
+  }
+
+  async function setCurrentChatId(id) {
+    currentChatId = id;
+    await chrome.storage.local.set({ [CURRENT_CHAT_KEY]: id });
   }
 
   async function loadHistory() {
@@ -162,13 +177,29 @@
   });
 
   // Load and render stored history on open
-  renderHistory().then((history) => {
-    if (history.length === 0) {
-      addMessage('How can I help?', false);
-      saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
-    }
-    input.focus();
+  initCurrentChat().then(() => {
+    renderHistory().then((history) => {
+      if (history.length === 0) {
+        addMessage('How can I help?', false);
+        saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+      }
+      input.focus();
+    });
   });
+
+  // New Chat button: create a new chat id and reset view/history
+  const newChatBtn = document.getElementById('new-chat-btn');
+  if (newChatBtn) {
+    newChatBtn.addEventListener('click', async () => {
+      const newId = `chat_${Date.now()}`;
+      await setCurrentChatId(newId);
+      messagesContainer.innerHTML = '';
+      addMessage('How can I help?', false);
+      await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+      input.value = '';
+      input.focus();
+    });
+  }
 
   // Listen for storage changes (when API key is added)
   chrome.storage.onChanged.addListener((changes, namespace) => {
