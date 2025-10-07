@@ -406,6 +406,14 @@
     }
   });
 
+  // Settings button in chat history sidebar
+  const historySettingsBtn = document.getElementById('history-settings-btn');
+  if (historySettingsBtn) {
+    historySettingsBtn.addEventListener('click', () => {
+      chrome.action.openPopup();
+    });
+  }
+
   // Establish connection with background script to detect when sidebar closes
   chrome.runtime.connect({ name: 'sidepanel' });
   

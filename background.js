@@ -3,11 +3,6 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('QuixAnswer extension installed');
 });
 
-// Open side panel when extension icon is clicked
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ tabId: tab.id });
-});
-
 // Listen for messages from content script and side panel
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'OPEN_SIDE_PANEL') {
@@ -30,12 +25,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.error('Error opening side panel:', error);
         sendResponse({ success: false, error: error.message });
       });
-    return true;
-  }
-
-  if (request.type === 'OPEN_SETTINGS') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('popup.html') });
-    sendResponse({ success: true });
     return true;
   }
 
