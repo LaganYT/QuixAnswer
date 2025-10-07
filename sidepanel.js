@@ -68,6 +68,28 @@
     await chrome.storage.local.set({ [CURRENT_CHAT_KEY]: id });
   }
 
+  function isChatEmpty(messages) {
+    // Chat is empty if it only has the greeting message or no messages
+    if (!messages || messages.length === 0) return true;
+    if (messages.length === 1 && 
+        messages[0].role === 'assistant' && 
+        messages[0].content === 'How can I help?') {
+      return true;
+    }
+    return false;
+  }
+
+  async function deleteEmptyChat(chatId) {
+    const stored = await chrome.storage.local.get([STORAGE_KEY]);
+    const all = stored[STORAGE_KEY] || {};
+    if (all[chatId] && isChatEmpty(all[chatId])) {
+      delete all[chatId];
+      await chrome.storage.local.set({ [STORAGE_KEY]: all });
+      return true;
+    }
+    return false;
+  }
+
   async function loadHistory() {
     const chatId = getCurrentChatId();
     const stored = await chrome.storage.local.get([STORAGE_KEY]);
@@ -87,12 +109,15 @@
   async function getAllChats() {
     const stored = await chrome.storage.local.get([STORAGE_KEY]);
     const all = stored[STORAGE_KEY] || {};
-    return Object.entries(all).map(([id, messages]) => ({
-      id,
-      messages,
-      preview: getChatPreview(messages),
-      timestamp: getChatTimestamp(id)
-    })).sort((a, b) => b.timestamp - a.timestamp);
+    return Object.entries(all)
+      .filter(([id, messages]) => !isChatEmpty(messages)) // Only show non-empty chats
+      .map(([id, messages]) => ({
+        id,
+        messages,
+        preview: getChatPreview(messages),
+        timestamp: getChatTimestamp(id)
+      }))
+      .sort((a, b) => b.timestamp - a.timestamp);
   }
 
   function getChatPreview(messages) {
@@ -155,6 +180,12 @@
   }
 
   async function switchToChat(chatId) {
+    // Delete current chat if it's empty before switching
+    const currentId = getCurrentChatId();
+    if (currentId !== chatId) {
+      await deleteEmptyChat(currentId);
+    }
+    
     await setCurrentChatId(chatId);
     const history = await loadHistory();
     messagesContainer.innerHTML = '';
@@ -351,6 +382,10 @@
   const newChatBtn = document.getElementById('new-chat-btn');
   if (newChatBtn) {
     newChatBtn.addEventListener('click', async () => {
+      // Delete current chat if it's empty before creating new one
+      const currentId = getCurrentChatId();
+      await deleteEmptyChat(currentId);
+      
       const newId = `chat_${Date.now()}`;
       await setCurrentChatId(newId);
       messagesContainer.innerHTML = '';
@@ -374,8 +409,11 @@
     }
   });
 
-  // Notify when sidebar might be closing
-  window.addEventListener('pagehide', () => {
+  // Notify when sidebar might be closing and cleanup empty chats
+  window.addEventListener('pagehide', async () => {
+    // Clean up empty chat before closing
+    const currentId = getCurrentChatId();
+    await deleteEmptyChat(currentId);
     chrome.runtime.sendMessage({ type: 'SIDEBAR_CLOSED' });
   });
 })();
