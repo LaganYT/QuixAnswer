@@ -129,8 +129,9 @@ async function getPageContext() {
 // AI Response function using Groq API
 async function getAIResponse(question, messages, includePageContext = false) {
   // Get API key from storage
-  const result = await chrome.storage.local.get(['apiKey']);
+  const result = await chrome.storage.local.get(['apiKey', 'model']);
   const apiKey = result.apiKey;
+  const model = result.model || 'llama-3.3-70b-versatile';
 
   if (!apiKey) {
     return "Please set your Groq API key in the extension settings first.";
@@ -158,7 +159,7 @@ async function getAIResponse(question, messages, includePageContext = false) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // Fast and powerful Groq model
+        model: model, // Use selected model
         messages: [
           {
             role: 'system',
@@ -189,8 +190,9 @@ async function getAIResponse(question, messages, includePageContext = false) {
 // Title generation using Groq API
 async function generateChatTitle(userMessage, assistantMessage) {
   // Get API key from storage
-  const result = await chrome.storage.local.get(['apiKey']);
+  const result = await chrome.storage.local.get(['apiKey', 'model']);
   const apiKey = result.apiKey;
+  const model = result.model || 'llama-3.3-70b-versatile';
 
   if (!apiKey) {
     return 'New Chat';
@@ -207,7 +209,7 @@ async function generateChatTitle(userMessage, assistantMessage) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: model,
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: prompt }

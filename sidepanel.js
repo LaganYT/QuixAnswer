@@ -421,6 +421,7 @@
     
     const content = document.createElement('div');
     content.className = 'message-content';
+    content.setAttribute('title', isUser ? 'User message' : 'Click to copy');
     if (isUser) {
       content.textContent = text;
     } else {
@@ -537,7 +538,12 @@
   // Event listeners
   sendBtn.addEventListener('click', sendMessage);
   
-  input.addEventListener('keypress', (e) => {
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+  });
+
+  input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();

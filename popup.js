@@ -2,11 +2,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const apiKeyInput = document.getElementById('apiKey');
   const openerPositionSelect = document.getElementById('openerPosition');
+  const modelSelect = document.getElementById('model');
   const saveBtn = document.getElementById('saveBtn');
   const status = document.getElementById('status');
 
   // Load saved API key
-  const result = await chrome.storage.local.get(['apiKey', 'openerPosition']);
+  const result = await chrome.storage.local.get(['apiKey', 'openerPosition', 'model']);
   if (result.apiKey) {
     apiKeyInput.value = result.apiKey;
   }
@@ -15,11 +16,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     openerPositionSelect.value = 'middle';
   }
+  modelSelect.value = result.model || 'llama-3.3-70b-versatile';
 
   // Save settings
   saveBtn.addEventListener('click', async () => {
     const apiKey = apiKeyInput.value.trim();
     const openerPosition = openerPositionSelect.value;
+    const model = modelSelect.value;
 
     if (!apiKey) {
       showStatus('Please enter an API key', 'error');
@@ -32,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-      await chrome.storage.local.set({ apiKey, openerPosition });
+      await chrome.storage.local.set({ apiKey, openerPosition, model });
       showStatus('Settings saved successfully!', 'success');
     } catch (error) {
       showStatus('Error saving settings', 'error');
