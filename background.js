@@ -93,7 +93,7 @@ async function getPageContext() {
         const bodyClone = document.body.cloneNode(true);
         
         // Remove unwanted elements
-        const unwantedSelectors = ['script', 'style', 'noscript', 'iframe', 'nav', 'footer', 'header'];
+        const unwantedSelectors = ['script', 'svg', 'path', 'meta', 'style', 'noscript', 'iframe', 'nav', 'footer', 'header'];
         unwantedSelectors.forEach(selector => {
           bodyClone.querySelectorAll(selector).forEach(el => el.remove());
         });
