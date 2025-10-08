@@ -6,10 +6,13 @@
   "permissions": [
     "storage",
     "activeTab",
-    "sidePanel"
+    "sidePanel",
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
-    "https://api.groq.com/*"
+    "https://api.groq.com/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"

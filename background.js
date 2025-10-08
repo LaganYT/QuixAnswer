@@ -40,7 +40,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.type === 'GET_AI_RESPONSE') {
-    getAIResponse(request.question, request.messages)
+    getAIResponse(request.question, request.messages, request.includePageContext)
       .then(response => sendResponse({ success: true, answer: response }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep the message channel open for async response
@@ -61,8 +61,66 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
+// Function to extract page content from the active tab
+async function getPageContext() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tab || !tab.id) {
+      return null;
+    }
+
+    // Don't try to inject on chrome:// or extension pages
+    if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
+      return null;
+    }
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        // Extract meaningful text content from the page
+        const title = document.title;
+        const url = window.location.href;
+        
+        // Get main content, avoiding script tags, style tags, etc.
+        const bodyClone = document.body.cloneNode(true);
+        
+        // Remove unwanted elements
+        const unwantedSelectors = ['script', 'style', 'noscript', 'iframe', 'nav', 'footer', 'header'];
+        unwantedSelectors.forEach(selector => {
+          bodyClone.querySelectorAll(selector).forEach(el => el.remove());
+        });
+        
+        // Get text content and clean it up
+        let text = bodyClone.innerText || bodyClone.textContent || '';
+        
+        // Clean up whitespace
+        text = text.replace(/\s+/g, ' ').trim();
+        
+        // Limit to first 3000 characters to avoid token limits
+        text = text.substring(0, 3000);
+        
+        return {
+          title,
+          url,
+          content: text
+        };
+      }
+    });
+
+    if (results && results[0] && results[0].result) {
+      return results[0].result;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting page context:', error);
+    return null;
+  }
+}
+
 // AI Response function using Groq API
-async function getAIResponse(question, messages) {
+async function getAIResponse(question, messages, includePageContext = false) {
   // Get API key from storage
   const result = await chrome.storage.local.get(['apiKey']);
   const apiKey = result.apiKey;
@@ -71,7 +129,21 @@ async function getAIResponse(question, messages) {
     return "Please set your Groq API key in the extension settings first.";
   }
 
+  // Get page context if requested
+  let pageContext = null;
+  if (includePageContext) {
+    pageContext = await getPageContext();
+  }
+
   try {
+    // Build the messages array
+    let systemMessage = 'You are QuixAnswer, a helpful AI assistant that provides quick, concise, and simple answers. Keep responses brief and to the point.';
+    
+    // If we have page context, add it to the system message
+    if (pageContext) {
+      systemMessage += `\n\nThe user is currently viewing this webpage:\nTitle: ${pageContext.title}\nURL: ${pageContext.url}\nContent: ${pageContext.content}`;
+    }
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -83,7 +155,7 @@ async function getAIResponse(question, messages) {
         messages: [
           {
             role: 'system',
-            content: 'You are QuixAnswer, a helpful AI assistant that provides quick, concise, and simple answers. Keep responses brief and to the point.'
+            content: systemMessage
           },
           ...(Array.isArray(messages) && messages.length > 0
             ? messages

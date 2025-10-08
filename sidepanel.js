@@ -14,9 +14,27 @@
   const deleteModalOverlay = document.getElementById('delete-modal-overlay');
   const deleteCancelBtn = document.getElementById('delete-cancel-btn');
   const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+  const includeContextToggle = document.getElementById('include-context-toggle');
 
   // Check if API key is set
   checkApiKey();
+  
+  // Load and save toggle state
+  const CONTEXT_TOGGLE_KEY = 'includePageContext';
+  
+  // Load saved toggle state
+  chrome.storage.local.get([CONTEXT_TOGGLE_KEY], (result) => {
+    if (includeContextToggle && result[CONTEXT_TOGGLE_KEY] !== undefined) {
+      includeContextToggle.checked = result[CONTEXT_TOGGLE_KEY];
+    }
+  });
+  
+  // Save toggle state when changed
+  if (includeContextToggle) {
+    includeContextToggle.addEventListener('change', () => {
+      chrome.storage.local.set({ [CONTEXT_TOGGLE_KEY]: includeContextToggle.checked });
+    });
+  }
 
   async function checkApiKey() {
     const result = await chrome.storage.local.get(['apiKey']);
@@ -321,8 +339,16 @@
     const context = [...prior, userMsg];
     await saveHistory(context);
 
+    // Check if we should include webpage context
+    const includeContext = includeContextToggle && includeContextToggle.checked;
+
     chrome.runtime.sendMessage(
-      { type: 'GET_AI_RESPONSE', question: question, messages: context },
+      { 
+        type: 'GET_AI_RESPONSE', 
+        question: question, 
+        messages: context,
+        includePageContext: includeContext
+      },
       (response) => {
         removeLoadingMessage(loadingMsg);
         sendBtn.disabled = false;
