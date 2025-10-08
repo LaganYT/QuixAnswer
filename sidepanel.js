@@ -16,6 +16,122 @@
   const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
   const includeContextToggle = document.getElementById('include-context-toggle');
 
+  // Minimal Markdown renderer with basic sanitization
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderMarkdown(md) {
+    if (!md) return '';
+
+    // Normalize line endings
+    md = md.replace(/\r\n?/g, '\n');
+
+    // Process fenced code blocks first (```lang\ncode```)
+    let inCodeBlock = false;
+    let codeLang = '';
+    const lines = md.split('\n');
+    const htmlLines = [];
+    let listOpen = false;
+    let olOpen = false;
+
+    function closeLists() {
+      if (listOpen) { htmlLines.push('</ul>'); listOpen = false; }
+      if (olOpen) { htmlLines.push('</ol>'); olOpen = false; }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Fenced code blocks
+      const fenceMatch = line.match(/^```\s*([a-zA-Z0-9_-]+)?\s*$/);
+      if (fenceMatch) {
+        closeLists();
+        if (!inCodeBlock) {
+          inCodeBlock = true;
+          codeLang = fenceMatch[1] ? ` class="language-${escapeHtml(fenceMatch[1])}"` : '';
+          htmlLines.push(`<pre><code${codeLang}>`);
+        } else {
+          inCodeBlock = false;
+          codeLang = '';
+          htmlLines.push('</code></pre>');
+        }
+        continue;
+      }
+
+      if (inCodeBlock) {
+        htmlLines.push(escapeHtml(line));
+        continue;
+      }
+
+      // Headings # to ######
+      const heading = line.match(/^(#{1,6})\s+(.*)$/);
+      if (heading) {
+        closeLists();
+        const level = heading[1].length;
+        const text = heading[2];
+        htmlLines.push(`<h${level}>${inlineMarkdown(text)}</h${level}>`);
+        continue;
+      }
+
+      // Ordered list
+      const olItem = line.match(/^\s*\d+\.\s+(.*)$/);
+      if (olItem) {
+        if (!olOpen) { closeLists(); htmlLines.push('<ol>'); olOpen = true; }
+        htmlLines.push(`<li>${inlineMarkdown(olItem[1])}</li>`);
+        continue;
+      }
+
+      // Unordered list
+      const ulItem = line.match(/^\s*[-*+]\s+(.*)$/);
+      if (ulItem) {
+        if (!listOpen) { closeLists(); htmlLines.push('<ul>'); listOpen = true; }
+        htmlLines.push(`<li>${inlineMarkdown(ulItem[1])}</li>`);
+        continue;
+      }
+
+      // Empty line => paragraph break
+      if (line.trim() === '') {
+        closeLists();
+        htmlLines.push('<br/>');
+        continue;
+      }
+
+      // Paragraph
+      closeLists();
+      htmlLines.push(`<p>${inlineMarkdown(line)}</p>`);
+    }
+
+    // Close any open lists
+    closeLists();
+    // Close code block if somehow left open (malformed input)
+    if (inCodeBlock) {
+      htmlLines.push('</code></pre>');
+    }
+
+    return htmlLines.join('\n');
+  }
+
+  function inlineMarkdown(text) {
+    // Escape first
+    let s = escapeHtml(text);
+    // Links [text](url)
+    s = s.replace(/\[([^\]]+)\]\((https?:[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Bold **text**
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Italic *text* or _text_
+    s = s.replace(/(^|\W)\*([^*]+)\*(?=\W|$)/g, '$1<em>$2</em>');
+    s = s.replace(/(^|\W)_([^_]+)_(?=\W|$)/g, '$1<em>$2</em>');
+    // Inline code `code`
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return s;
+  }
+
   // Check if API key is set
   checkApiKey();
   
@@ -287,7 +403,11 @@
     
     const content = document.createElement('div');
     content.className = 'message-content';
-    content.textContent = text;
+    if (isUser) {
+      content.textContent = text;
+    } else {
+      content.innerHTML = renderMarkdown(text);
+    }
     
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(content);
