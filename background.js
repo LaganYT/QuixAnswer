@@ -104,9 +104,6 @@ async function getPageContext() {
         // Clean up whitespace
         text = text.replace(/\s+/g, ' ').trim();
         
-        // Limit to first 3000 characters to avoid token limits
-        text = text.substring(0, 3000);
-        
         return {
           title,
           url,
