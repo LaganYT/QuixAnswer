@@ -45,6 +45,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep the message channel open for async response
   }
+
+  if (request.type === 'GENERATE_CHAT_TITLE') {
+    generateChatTitle(request.user, request.assistant)
+      .then(title => sendResponse({ success: true, title }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
 
 // Listen for side panel connections
@@ -176,6 +183,55 @@ async function getAIResponse(question, messages, includePageContext = false) {
   } catch (error) {
     console.error('AI Response error:', error);
     return `Error: ${error.message}`;
+  }
+}
+
+// Title generation using Groq API
+async function generateChatTitle(userMessage, assistantMessage) {
+  // Get API key from storage
+  const result = await chrome.storage.local.get(['apiKey']);
+  const apiKey = result.apiKey;
+
+  if (!apiKey) {
+    return 'New Chat';
+  }
+
+  try {
+    const system = 'You generate concise, descriptive chat titles. Respond with ONLY the title, no quotes, no punctuation at the end. Title Case. Aim for 3-7 words.';
+    const prompt = `User: ${userMessage}\nAssistant: ${assistantMessage}\n\nTitle:`;
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 16,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `API request failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    let title = (data.choices?.[0]?.message?.content || '').trim();
+    // Post-process to a single line and trim quotes
+    title = title.replace(/\s+/g, ' ');
+    title = title.replace(/^"|"$/g, '');
+    if (!title) title = 'New Chat';
+    return title;
+  } catch (error) {
+    console.error('Title generation error:', error);
+    return 'New Chat';
   }
 }
 

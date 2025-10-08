@@ -216,7 +216,9 @@
   async function deleteEmptyChat(chatId) {
     const stored = await chrome.storage.local.get([STORAGE_KEY]);
     const all = stored[STORAGE_KEY] || {};
-    if (all[chatId] && isChatEmpty(all[chatId])) {
+    const entry = all[chatId];
+    const messages = Array.isArray(entry) ? entry : (entry && entry.messages) || [];
+    if (entry && isChatEmpty(messages)) {
       delete all[chatId];
       await chrome.storage.local.set({ [STORAGE_KEY]: all });
       return true;
@@ -228,14 +230,21 @@
     const chatId = getCurrentChatId();
     const stored = await chrome.storage.local.get([STORAGE_KEY]);
     const all = stored[STORAGE_KEY] || {};
-    return all[chatId] || [];
+    const entry = all[chatId];
+    if (!entry) return [];
+    return Array.isArray(entry) ? entry : (entry.messages || []);
   }
 
-  async function saveHistory(history) {
+  async function saveHistory(history, opts = {}) {
     const chatId = getCurrentChatId();
     const stored = await chrome.storage.local.get([STORAGE_KEY]);
     const all = stored[STORAGE_KEY] || {};
-    all[chatId] = history;
+    const prev = all[chatId];
+    let title = opts.title || null;
+    if (!title && prev && !Array.isArray(prev)) {
+      title = prev.title || null;
+    }
+    all[chatId] = { messages: history, title };
     await chrome.storage.local.set({ [STORAGE_KEY]: all });
     await updateHistoryList();
   }
@@ -244,17 +253,26 @@
     const stored = await chrome.storage.local.get([STORAGE_KEY]);
     const all = stored[STORAGE_KEY] || {};
     return Object.entries(all)
-      .filter(([id, messages]) => !isChatEmpty(messages)) // Only show non-empty chats
-      .map(([id, messages]) => ({
+      .map(([id, value]) => {
+        const messages = Array.isArray(value) ? value : (value?.messages || []);
+        const title = Array.isArray(value) ? null : (value?.title || null);
+        return { id, messages, title };
+      })
+      .filter(({ messages }) => !isChatEmpty(messages)) // Only show non-empty chats
+      .map(({ id, messages, title }) => ({
         id,
         messages,
-        preview: getChatPreview(messages),
+        title,
+        preview: getChatPreview(messages, title),
         timestamp: getChatTimestamp(id)
       }))
       .sort((a, b) => b.timestamp - a.timestamp);
   }
 
-  function getChatPreview(messages) {
+  function getChatPreview(messages, title) {
+    if (title && typeof title === 'string' && title.trim()) {
+      return title.trim();
+    }
     // Get first user message or use default
     const firstUserMsg = messages.find(m => m.role === 'user');
     if (firstUserMsg) {
@@ -475,7 +493,36 @@
         
         if (response && response.success) {
           const aiMsg = addMessage(response.answer, false);
-          saveHistory([...context, aiMsg]);
+          const updated = [...context, aiMsg];
+          saveHistory(updated).then(async () => {
+            // Generate title after first exchange
+            const firstUser = updated.find(m => m.role === 'user');
+            const assistants = updated.filter(m => m.role === 'assistant');
+            const firstAssistant = assistants.find(m => m.content !== 'How can I help?');
+            if (firstUser && firstAssistant && updated.length <= 3) {
+              chrome.runtime.sendMessage(
+                {
+                  type: 'GENERATE_CHAT_TITLE',
+                  user: firstUser.content,
+                  assistant: firstAssistant.content
+                },
+                async (titleResp) => {
+                  if (titleResp && titleResp.success && titleResp.title) {
+                    const stored = await chrome.storage.local.get([STORAGE_KEY]);
+                    const all = stored[STORAGE_KEY] || {};
+                    const chatId = getCurrentChatId();
+                    const entry = all[chatId];
+                    if (entry && !Array.isArray(entry)) {
+                      entry.title = titleResp.title;
+                      all[chatId] = entry;
+                      await chrome.storage.local.set({ [STORAGE_KEY]: all });
+                      await updateHistoryList();
+                    }
+                  }
+                }
+              );
+            }
+          });
         } else {
           const errorMsg = response?.error || 'Failed to get response';
           addMessage(`Error: ${errorMsg}`, false);
