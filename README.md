@@ -1,118 +1,198 @@
-# QuixAnswer - AI Chatbot Chrome Extension
+# QuixAnswer Web
 
-QuixAnswer is a sleek AI chatbot Chrome extension that lives in Chrome's official sidebar, providing quick and simple answers to your questions. Features a beautiful floating side button for easy access.
+A modern AI chat assistant web application powered by Groq's API. This is the web version of the QuixAnswer Chrome extension, providing the same functionality in a standalone web application.
 
 ## Features
 
-- 🎨 **Beautiful Dark UI** - Modern, sleek interface with smooth animations
-- 🔘 **Floating Side Button** - Always accessible with a click on the side button
-- 📱 **Chrome Sidebar Integration** - Uses Chrome's official Side Panel API
-- 🤖 **AI-Powered Responses** - Powered by Groq's lightning-fast Llama 3.3 70B model
-- 💬 **Chat History** - Keep track of your conversation within each session
-- ⚡ **Blazing Fast** - Groq's LPU inference for near-instant responses
-- 🆓 **Free Tier Available** - Groq offers generous free tier access
+- 🤖 **AI Chat Interface**: Clean, modern chat interface with markdown support
+- 💾 **Chat History**: Persistent chat history with local storage
+- ⚙️ **Settings Management**: Easy API key configuration
+- 🎨 **Modern UI**: Dark theme with smooth animations
+- 📱 **Responsive Design**: Works on desktop and mobile devices
+- 🔒 **Local Storage**: All data stored locally in your browser
+- 🚀 **Fast Performance**: Optimized for speed and efficiency
 
-## Installation
+## Getting Started
 
-### Step 1: Get Your FREE Groq API Key
+### Prerequisites
 
-1. Visit [Groq Console](https://console.groq.com/keys)
-2. Sign in or create a free account
-3. Click "Create API Key"
-4. Copy the key (starts with `gsk_`)
+- A modern web browser (Chrome, Firefox, Safari, Edge)
+- A Groq API key (free at [console.groq.com](https://console.groq.com/keys))
 
-### Step 2: Create Extension Icon
+### Installation
 
-You need a PNG icon for the extension:
+1. **Clone or download** this repository to your local machine
+2. **Navigate** to the project directory
+3. **Start a local server** (required for CORS and local storage to work properly)
 
-1. Open `icons/icon.svg`
-2. Convert to PNG using a tool like CloudConvert (https://cloudconvert.com/svg-to-png)
-3. Export a 128×128 PNG and save it as `icons/icon.png`
+#### Option 1: Python (Recommended)
+```bash
+# Python 3
+python -m http.server 8000
 
-Optional: You can add other sizes later if you update the manifest to reference them.
+# Python 2
+python -m SimpleHTTPServer 8000
+```
 
-### Step 3: Load the Extension
+#### Option 2: Node.js
+```bash
+# Install a simple HTTP server
+npm install -g http-server
 
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable "Developer mode" (toggle in top right)
-3. Click "Load unpacked"
-4. Select the `QuixAnswer` folder
-5. The extension should load successfully
+# Start the server
+http-server -p 8000
+```
 
-### Step 4: Configure Your API Key
+#### Option 3: PHP
+```bash
+php -S localhost:8000
+```
 
-1. Click the floating button on any webpage, or click the extension icon
-2. Click "Open Settings" in the side panel (or click the gear icon)
-3. Paste your Groq API key (starts with `gsk_`)
-4. Click "Save Settings"
+4. **Open your browser** and navigate to `http://localhost:8000`
+
+### Configuration
+
+1. **Click the settings button** (gear icon) in the top-right corner
+2. **Enter your Groq API key** (starts with `gsk_`)
+3. **Select your preferred model**:
+   - Llama 3.3 70B (versatile) - Better quality responses
+   - Llama-3.1-8b-instant (fast) - Faster responses
+4. **Save your settings**
 
 ## Usage
 
-### Opening QuixAnswer
+### Basic Chat
+- Type your question in the input field at the bottom
+- Press Enter or click the send button
+- The AI will respond with helpful information
 
-Three ways to open the sidebar:
-1. **Floating Button**: Click the teal circular button on the right side of any webpage
-2. **Extension Icon**: Click the QuixAnswer icon in your Chrome toolbar
-3. **Settings Button**: Click the gear icon below the main button
+### Chat History
+- Click the history button (three lines) to view past conversations
+- Click on any conversation to continue it
+- Delete conversations you no longer need
 
-### Asking Questions
+### New Chat
+- Click the "+" button to start a fresh conversation
+- This creates a new chat without previous context
 
-1. Type your question in the input field at the bottom
-2. Press Enter or click the send button
-3. QuixAnswer will provide a quick, concise answer
-
-### Tips for Best Results
-
-- Ask clear, specific questions
-- QuixAnswer is optimized for short, helpful answers
-- Keep questions focused on one topic at a time
-
-### Settings Reference
-
-Configure these in the Settings popup:
-- Groq API Key (must start with `gsk_`)
-- Sidebar opener position: Top, Middle, or Bottom
-- Model: `llama-3.3-70b-versatile` (default) or `llama-3.1-8b-instant`
-
-### Change AI Model
-
-Choose the model in the Settings popup (`popup.html`) or set a default in `background.js` (default `llama-3.3-70b-versatile`). A fast alternative is `llama-3.1-8b-instant`.
-
-### Adjust Response Length
-
-In `background.js`, change the `max_tokens` value in the Groq request body (default `500`). Increase for longer answers.
+### Webpage Context
+- Toggle "Include webpage context" to let the AI know about the current page
+- Useful when you want AI to help with content from the current website
 
 ## File Structure
 
 ```
-QuixAnswer/
-├── manifest.json          # Extension configuration
-├── background.js          # Service worker for API calls and side panel
-├── content.js            # Floating button injection
-├── sidebar.css           # Floating button styling
-├── sidepanel.html        # Chrome sidebar UI
-├── sidepanel.js          # Sidebar functionality
-├── popup.html            # Settings popup
-├── popup.js              # Settings logic
-├── icons/
-│   ├── icon.svg          # Source icon (convert to PNG)
-│   └── icon.png          # 128×128 icon referenced in manifest
-├── .gitignore
-└── README.md             # This file
+quixanswer-web/
+├── index.html          # Main application page
+├── settings.html       # Settings configuration page
+├── app.js             # Main application logic
+├── styles.css         # Application styles
+├── README.md          # This file
+└── icons/             # Application icons
+    ├── icon.png
+    └── icon.svg
 ```
 
-## Technical Details
+## API Integration
 
-- **Manifest Version**: 3
-- **Permissions**: `storage`, `activeTab`, `sidePanel`, `scripting`, `tabs`
-- **Host Permissions**: `https://api.groq.com/*`, `<all_urls>`
-- **AI Provider**: Groq (`groq.com`)
-- **Default Model**: Llama 3.3 70B Versatile (customizable)
-- **Side Panel API**: Chrome's official sidebar implementation
-- **Inference Speed**: Lightning-fast with Groq's LPU technology
-- **Versioning**: `YYYY.MM.DD` format (e.g., `2025.10.09`)
+This application uses the Groq API for AI responses. The API calls are made directly from the browser to:
 
-### Version 2025.10.09
-- Manifest now includes `scripting` and `tabs` permissions
-- Icons simplified to a single `icons/icon.png` (128×128)
-- Settings updated: model selection and opener position
+- **Chat Completions**: `https://api.groq.com/openai/v1/chat/completions`
+- **Title Generation**: Uses the same endpoint with different parameters
+
+### Supported Models
+- `llama-3.3-70b-versatile` - High-quality responses
+- `llama-3.1-8b-instant` - Fast responses
+
+## Data Storage
+
+All data is stored locally in your browser using `localStorage`:
+
+- **Chat History**: `quix_chat_history`
+- **Current Chat ID**: `quix_current_chat_id`
+- **API Key**: `apiKey`
+- **Model Preference**: `model`
+- **Context Toggle**: `includePageContext`
+
+## Browser Compatibility
+
+- ✅ Chrome 80+
+- ✅ Firefox 75+
+- ✅ Safari 13+
+- ✅ Edge 80+
+
+## Security Notes
+
+- **API Key**: Your Groq API key is stored locally in your browser
+- **No Server**: This application runs entirely in your browser
+- **HTTPS Recommended**: For production use, serve over HTTPS
+- **CORS**: The application makes direct API calls to Groq (CORS enabled)
+
+## Development
+
+### Local Development
+```bash
+# Start development server
+npm run dev
+# or
+python -m http.server 8000
+```
+
+### Customization
+- Modify `styles.css` for visual changes
+- Update `app.js` for functionality changes
+- Edit `index.html` for structure changes
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Please set your Groq API key"**
+   - Go to Settings and enter your API key
+   - Make sure it starts with `gsk_`
+
+2. **"API request failed"**
+   - Check your internet connection
+   - Verify your API key is correct
+   - Ensure you have API credits remaining
+
+3. **Chat history not saving**
+   - Make sure you're running on a local server (not file://)
+   - Check browser console for errors
+   - Try clearing browser data and re-entering settings
+
+4. **CORS errors**
+   - Make sure you're running on a local server
+   - Don't open the HTML file directly in the browser
+
+### Browser Console
+Open browser developer tools (F12) to see any error messages that might help diagnose issues.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Support
+
+For issues and questions:
+- Check the troubleshooting section above
+- Open an issue on GitHub
+- Review the browser console for error messages
+
+## Changelog
+
+### Version 1.0.0
+- Initial web version release
+- Full chat functionality
+- Settings management
+- Chat history
+- Modern UI/UX
+- Local storage integration

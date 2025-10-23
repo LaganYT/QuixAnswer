@@ -12,7 +12,8 @@
     }
 
     body {
-      width: 350px;
+      width: 100%;
+      min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background: #1a1a1a;
       color: #ffffff;
@@ -80,6 +81,16 @@
       border-color: #00D4B5;
     }
 
+    select {
+      width: 100%;
+      padding: 12px;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 14px;
+    }
+
     .btn {
       width: 100%;
       padding: 12px;
@@ -145,9 +156,29 @@
     .info-box a:hover {
       text-decoration: underline;
     }
+
+    .back-btn {
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+      display: inline-block;
+      margin-bottom: 20px;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      background: #343434;
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
+  <a href="index.html" class="back-btn">← Back to Chat</a>
+
   <div class="header">
     <div class="logo">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -155,7 +186,7 @@
         <path d="M2 17L12 22L22 17M2 12L12 17L22 12" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <h1>QuixAnswer</h1>
+    <h1>QuixAnswer Settings</h1>
   </div>
 
   <p class="subtitle">Configure your AI assistant</p>
@@ -166,17 +197,8 @@
   </div>
 
   <div class="form-group">
-    <label for="openerPosition">Sidebar opener position</label>
-    <select id="openerPosition" style="width: 100%; padding: 12px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; color: #ffffff; font-size: 14px;">
-      <option value="top">Top</option>
-      <option value="middle">Middle</option>
-      <option value="bottom">Bottom</option>
-    </select>
-  </div>
-
-  <div class="form-group">
     <label for="model">Model</label>
-    <select id="model" style="width: 100%; padding: 12px; background: #2a2a2a; border: 1px solid #3a3a3a; border-radius: 8px; color: #ffffff; font-size: 14px;">
+    <select id="model">
       <option value="llama-3.3-70b-versatile">Llama 3.3 70B (versatile)</option>
       <option value="llama-3.1-8b-instant">Llama-3.1-8b-instant (fast)</option>
     </select>
@@ -188,10 +210,85 @@
 
   <div class="info-box">
     <p>💡 Get your FREE API key from <a href="https://console.groq.com/keys" target="_blank">Groq Console</a></p>
-    <p style="margin-top: 8px;">Click the floating button on any page to open QuixAnswer!</p>
+    <p style="margin-top: 8px;">Your settings are saved locally in your browser.</p>
   </div>
 
-  <script src="popup.js"></script>
+  <script>
+    // Settings script for QuixAnswer Web
+    document.addEventListener('DOMContentLoaded', async () => {
+      const apiKeyInput = document.getElementById('apiKey');
+      const modelSelect = document.getElementById('model');
+      const saveBtn = document.getElementById('saveBtn');
+      const status = document.getElementById('status');
+
+      // Load saved settings
+      function getStorageItem(key) {
+        try {
+          const item = localStorage.getItem(key);
+          return item ? JSON.parse(item) : null;
+        } catch (e) {
+          console.error('Error getting storage item:', e);
+          return null;
+        }
+      }
+
+      function setStorageItem(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+          return true;
+        } catch (e) {
+          console.error('Error setting storage item:', e);
+          return false;
+        }
+      }
+
+      const apiKey = getStorageItem('apiKey');
+      const model = getStorageItem('model');
+
+      if (apiKey) {
+        apiKeyInput.value = apiKey;
+      }
+      if (model) {
+        modelSelect.value = model;
+      } else {
+        modelSelect.value = 'llama-3.3-70b-versatile';
+      }
+
+      // Save settings
+      saveBtn.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value.trim();
+        const model = modelSelect.value;
+
+        if (!apiKey) {
+          showStatus('Please enter an API key', 'error');
+          return;
+        }
+
+        if (!apiKey.startsWith('gsk_')) {
+          showStatus('Invalid Groq API key format (should start with gsk_)', 'error');
+          return;
+        }
+
+        try {
+          setStorageItem('apiKey', apiKey);
+          setStorageItem('model', model);
+          showStatus('Settings saved successfully!', 'success');
+        } catch (error) {
+          showStatus('Error saving settings', 'error');
+        }
+      });
+
+      function showStatus(message, type) {
+        status.textContent = message;
+        status.className = `status ${type}`;
+        
+        if (type === 'success') {
+          setTimeout(() => {
+            status.style.display = 'none';
+          }, 3000);
+        }
+      }
+    });
+  </script>
 </body>
 </html>
-

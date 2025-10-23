@@ -1,4 +1,4 @@
-// Side panel script for QuixAnswer
+// Main application script for QuixAnswer Web
 (function() {
   'use strict';
 
@@ -8,13 +8,28 @@
   const messagesContainer = document.getElementById('messages');
   const chatContainer = document.getElementById('chat-container');
   const historyListEl = document.getElementById('history-list');
-  const historyToggleBtn = document.getElementById('history-toggle-btn');
-  const sidebarOverlay = document.getElementById('sidebar-overlay');
   const chatHistorySidebar = document.getElementById('chat-history-sidebar');
   const deleteModalOverlay = document.getElementById('delete-modal-overlay');
   const deleteCancelBtn = document.getElementById('delete-cancel-btn');
   const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
   const includeContextToggle = document.getElementById('include-context-toggle');
+  const historySettingsBtn = document.getElementById('history-settings-btn');
+  const settingsPopup = document.getElementById('settings-popup');
+  const settingsCloseBtn = document.getElementById('settings-close-btn');
+  const settingsApiKey = document.getElementById('settings-apiKey');
+  const settingsModel = document.getElementById('settings-model');
+  const settingsSaveBtn = document.getElementById('settings-save-btn');
+  const settingsStatus = document.getElementById('settings-status');
+
+  // Storage keys
+  const STORAGE_KEY = 'quix_chat_history';
+  const CURRENT_CHAT_KEY = 'quix_current_chat_id';
+  const CONTEXT_TOGGLE_KEY = 'includePageContext';
+  const API_KEY_KEY = 'apiKey';
+  const MODEL_KEY = 'model';
+
+  // Current state
+  let currentChatId = 'default';
 
   // Minimal Markdown renderer with basic sanitization
   function escapeHtml(str) {
@@ -132,29 +147,31 @@
     return s;
   }
 
-  // Check if API key is set
-  checkApiKey();
-  
-  // Load and save toggle state
-  const CONTEXT_TOGGLE_KEY = 'includePageContext';
-  
-  // Load saved toggle state
-  chrome.storage.local.get([CONTEXT_TOGGLE_KEY], (result) => {
-    if (includeContextToggle && result[CONTEXT_TOGGLE_KEY] !== undefined) {
-      includeContextToggle.checked = result[CONTEXT_TOGGLE_KEY];
+  // Storage functions (using localStorage instead of chrome.storage)
+  function getStorageItem(key) {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : null;
+    } catch (e) {
+      console.error('Error getting storage item:', e);
+      return null;
     }
-  });
-  
-  // Save toggle state when changed
-  if (includeContextToggle) {
-    includeContextToggle.addEventListener('change', () => {
-      chrome.storage.local.set({ [CONTEXT_TOGGLE_KEY]: includeContextToggle.checked });
-    });
   }
 
+  function setStorageItem(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.error('Error setting storage item:', e);
+      return false;
+    }
+  }
+
+  // Check if API key is set
   async function checkApiKey() {
-    const result = await chrome.storage.local.get(['apiKey']);
-    if (!result.apiKey) {
+    const apiKey = getStorageItem(API_KEY_KEY);
+    if (!apiKey) {
       showSetupMessage();
     } else {
       // Add initial greeting as the first AI message if none exist
@@ -175,21 +192,17 @@
     `;
 
     document.getElementById('setup-btn').addEventListener('click', () => {
-      window.open(chrome.runtime.getURL('popup.html'), 'QuixAnswer Settings', 'width=400,height=600');
+      window.open('settings.html', '_blank', 'width=400,height=600');
     });
   }
 
   // Chat functionality + memory
-  const STORAGE_KEY = 'quix_chat_history';
-  const CURRENT_CHAT_KEY = 'quix_current_chat_id';
-  let currentChatId = 'default';
-
   async function initCurrentChat() {
-    const stored = await chrome.storage.local.get([CURRENT_CHAT_KEY]);
-    if (stored[CURRENT_CHAT_KEY]) {
-      currentChatId = stored[CURRENT_CHAT_KEY];
+    const stored = getStorageItem(CURRENT_CHAT_KEY);
+    if (stored) {
+      currentChatId = stored;
     } else {
-      await chrome.storage.local.set({ [CURRENT_CHAT_KEY]: currentChatId });
+      setStorageItem(CURRENT_CHAT_KEY, currentChatId);
     }
   }
 
@@ -199,7 +212,7 @@
 
   async function setCurrentChatId(id) {
     currentChatId = id;
-    await chrome.storage.local.set({ [CURRENT_CHAT_KEY]: id });
+    setStorageItem(CURRENT_CHAT_KEY, id);
   }
 
   function isChatEmpty(messages) {
@@ -214,13 +227,12 @@
   }
 
   async function deleteEmptyChat(chatId) {
-    const stored = await chrome.storage.local.get([STORAGE_KEY]);
-    const all = stored[STORAGE_KEY] || {};
+    const all = getStorageItem(STORAGE_KEY) || {};
     const entry = all[chatId];
     const messages = Array.isArray(entry) ? entry : (entry && entry.messages) || [];
     if (entry && isChatEmpty(messages)) {
       delete all[chatId];
-      await chrome.storage.local.set({ [STORAGE_KEY]: all });
+      setStorageItem(STORAGE_KEY, all);
       return true;
     }
     return false;
@@ -228,8 +240,7 @@
 
   async function loadHistory() {
     const chatId = getCurrentChatId();
-    const stored = await chrome.storage.local.get([STORAGE_KEY]);
-    const all = stored[STORAGE_KEY] || {};
+    const all = getStorageItem(STORAGE_KEY) || {};
     const entry = all[chatId];
     if (!entry) return [];
     return Array.isArray(entry) ? entry : (entry.messages || []);
@@ -237,21 +248,19 @@
 
   async function saveHistory(history, opts = {}) {
     const chatId = getCurrentChatId();
-    const stored = await chrome.storage.local.get([STORAGE_KEY]);
-    const all = stored[STORAGE_KEY] || {};
+    const all = getStorageItem(STORAGE_KEY) || {};
     const prev = all[chatId];
     let title = opts.title || null;
     if (!title && prev && !Array.isArray(prev)) {
       title = prev.title || null;
     }
     all[chatId] = { messages: history, title };
-    await chrome.storage.local.set({ [STORAGE_KEY]: all });
+    setStorageItem(STORAGE_KEY, all);
     await updateHistoryList();
   }
 
   async function getAllChats() {
-    const stored = await chrome.storage.local.get([STORAGE_KEY]);
-    const all = stored[STORAGE_KEY] || {};
+    const all = getStorageItem(STORAGE_KEY) || {};
     return Object.entries(all)
       .map(([id, value]) => {
         const messages = Array.isArray(value) ? value : (value?.messages || []);
@@ -287,15 +296,21 @@
     return match ? parseInt(match[1]) : 0;
   }
 
-  // Sidebar toggle functionality
-  function toggleSidebar(open) {
-    if (open) {
-      chatHistorySidebar.classList.add('open');
-      sidebarOverlay.classList.add('active');
-    } else {
-      chatHistorySidebar.classList.remove('open');
-      sidebarOverlay.classList.remove('active');
+  // Settings popup functionality
+  function showSettingsPopup() {
+    settingsPopup.classList.add('active');
+    // Load current settings
+    const apiKey = getStorageItem(API_KEY_KEY);
+    const model = getStorageItem(MODEL_KEY) || 'llama-3.3-70b-versatile';
+    
+    if (apiKey) {
+      settingsApiKey.value = apiKey;
     }
+    settingsModel.value = model;
+  }
+
+  function hideSettingsPopup() {
+    settingsPopup.classList.remove('active');
   }
 
   async function updateHistoryList() {
@@ -345,7 +360,6 @@
       addMessage(msg.content, msg.role === 'user');
     }
     await updateHistoryList();
-    toggleSidebar(false); // Close sidebar after switching
     input.focus();
   }
 
@@ -386,10 +400,9 @@
     const confirmed = await showDeleteModal();
     if (!confirmed) return;
     
-    const stored = await chrome.storage.local.get([STORAGE_KEY]);
-    const all = stored[STORAGE_KEY] || {};
+    const all = getStorageItem(STORAGE_KEY) || {};
     delete all[chatId];
-    await chrome.storage.local.set({ [STORAGE_KEY]: all });
+    setStorageItem(STORAGE_KEY, all);
     
     // Always create a new chat after deleting
     if (chatId === getCurrentChatId()) {
@@ -411,6 +424,7 @@
     }
     return history;
   }
+
   function addMessage(text, isUser = false) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
@@ -459,6 +473,119 @@
     }
   }
 
+  // AI Response function using Groq API
+  async function getAIResponse(question, messages, includePageContext = false) {
+    // Get API key from storage
+    const apiKey = getStorageItem(API_KEY_KEY);
+    const model = getStorageItem(MODEL_KEY) || 'llama-3.3-70b-versatile';
+
+    if (!apiKey) {
+      return "Please set your Groq API key in the settings first.";
+    }
+
+    // Get page context if requested (simplified for web version)
+    let pageContext = null;
+    if (includePageContext) {
+      pageContext = {
+        title: document.title,
+        url: window.location.href,
+        content: document.body.innerText || document.body.textContent || ''
+      };
+    }
+
+    try {
+      // Build the messages array
+      let systemMessage = 'You are QuixAnswer, a helpful AI assistant that provides quick, concise, and simple answers. Keep responses brief and to the point.';
+      
+      // If we have page context, add it to the system message
+      if (pageContext) {
+        systemMessage += `\n\nThe user is currently viewing this webpage:\nTitle: ${pageContext.title}\nURL: ${pageContext.url}\nContent: ${pageContext.content}`;
+      }
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'system',
+              content: systemMessage
+            },
+            ...(Array.isArray(messages) && messages.length > 0
+              ? messages
+              : [{ role: 'user', content: question }])
+          ],
+          max_tokens: 500,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `API request failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error) {
+      console.error('AI Response error:', error);
+      return `Error: ${error.message}`;
+    }
+  }
+
+  // Title generation using Groq API
+  async function generateChatTitle(userMessage, assistantMessage) {
+    // Get API key from storage
+    const apiKey = getStorageItem(API_KEY_KEY);
+    const model = getStorageItem(MODEL_KEY) || 'llama-3.3-70b-versatile';
+
+    if (!apiKey) {
+      return 'New Chat';
+    }
+
+    try {
+      const system = 'You generate concise, descriptive chat titles. Respond with ONLY the title, no quotes, no punctuation at the end. Title Case. Aim for 3-7 words.';
+      const prompt = `User: ${userMessage}\nAssistant: ${assistantMessage}\n\nTitle:`;
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 16,
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `API request failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      let title = (data.choices?.[0]?.message?.content || '').trim();
+      // Post-process to a single line and trim quotes
+      title = title.replace(/\s+/g, ' ');
+      title = title.replace(/^"|"$/g, '');
+      if (!title) title = 'New Chat';
+      return title;
+    } catch (error) {
+      console.error('Title generation error:', error);
+      return 'New Chat';
+    }
+  }
+
   async function sendMessage() {
     const question = input.value.trim();
     if (!question) return;
@@ -473,7 +600,7 @@
     // Show loading
     const loadingMsg = addLoadingMessage();
 
-    // Prepare history and send to background
+    // Prepare history and send to AI
     const prior = await loadHistory();
     const context = [...prior, userMsg];
     await saveHistory(context);
@@ -481,58 +608,45 @@
     // Check if we should include webpage context
     const includeContext = includeContextToggle && includeContextToggle.checked;
 
-    chrome.runtime.sendMessage(
-      { 
-        type: 'GET_AI_RESPONSE', 
-        question: question, 
-        messages: context,
-        includePageContext: includeContext
-      },
-      (response) => {
-        removeLoadingMessage(loadingMsg);
-        sendBtn.disabled = false;
-        
-        if (response && response.success) {
-          const aiMsg = addMessage(response.answer, false);
-          const updated = [...context, aiMsg];
-          saveHistory(updated).then(async () => {
-            // Generate title after first exchange
-            const firstUser = updated.find(m => m.role === 'user');
-            const assistants = updated.filter(m => m.role === 'assistant');
-            const firstAssistant = assistants.find(m => m.content !== 'How can I help?');
-            if (firstUser && firstAssistant && updated.length <= 3) {
-              chrome.runtime.sendMessage(
-                {
-                  type: 'GENERATE_CHAT_TITLE',
-                  user: firstUser.content,
-                  assistant: firstAssistant.content
-                },
-                async (titleResp) => {
-                  if (titleResp && titleResp.success && titleResp.title) {
-                    const stored = await chrome.storage.local.get([STORAGE_KEY]);
-                    const all = stored[STORAGE_KEY] || {};
-                    const chatId = getCurrentChatId();
-                    const entry = all[chatId];
-                    if (entry && !Array.isArray(entry)) {
-                      entry.title = titleResp.title;
-                      all[chatId] = entry;
-                      await chrome.storage.local.set({ [STORAGE_KEY]: all });
-                      await updateHistoryList();
-                    }
-                  }
-                }
-              );
-            }
-          });
-        } else {
-          const errorMsg = response?.error || 'Failed to get response';
-          addMessage(`Error: ${errorMsg}`, false);
+    try {
+      const response = await getAIResponse(question, context, includeContext);
+      
+      removeLoadingMessage(loadingMsg);
+      sendBtn.disabled = false;
+      
+      const aiMsg = addMessage(response, false);
+      const updated = [...context, aiMsg];
+      await saveHistory(updated);
+      
+      // Generate title after first exchange
+      const firstUser = updated.find(m => m.role === 'user');
+      const assistants = updated.filter(m => m.role === 'assistant');
+      const firstAssistant = assistants.find(m => m.content !== 'How can I help?');
+      if (firstUser && firstAssistant && updated.length <= 3) {
+        try {
+          const title = await generateChatTitle(firstUser.content, firstAssistant.content);
+          const all = getStorageItem(STORAGE_KEY) || {};
+          const chatId = getCurrentChatId();
+          const entry = all[chatId];
+          if (entry && !Array.isArray(entry)) {
+            entry.title = title;
+            all[chatId] = entry;
+            setStorageItem(STORAGE_KEY, all);
+            await updateHistoryList();
+          }
+        } catch (error) {
+          console.error('Title generation failed:', error);
         }
-        
-        // Focus back on input
-        input.focus();
       }
-    );
+      
+      // Focus back on input
+      input.focus();
+    } catch (error) {
+      removeLoadingMessage(loadingMsg);
+      sendBtn.disabled = false;
+      addMessage(`Error: ${error.message}`, false);
+      input.focus();
+    }
   }
 
   // Event listeners
@@ -550,38 +664,83 @@
     }
   });
 
-  // Always start with a new chat when opening sidebar
-  initCurrentChat().then(async () => {
-    await updateHistoryList();
+  // Load and save toggle state
+  const savedToggleState = getStorageItem(CONTEXT_TOGGLE_KEY);
+  if (includeContextToggle && savedToggleState !== null) {
+    includeContextToggle.checked = savedToggleState;
+  }
+  
+  // Save toggle state when changed
+  if (includeContextToggle) {
+    includeContextToggle.addEventListener('change', () => {
+      setStorageItem(CONTEXT_TOGGLE_KEY, includeContextToggle.checked);
+    });
+  }
+
+  // Settings popup event listeners
+  if (historySettingsBtn) {
+    historySettingsBtn.addEventListener('click', showSettingsPopup);
+  }
+
+  if (settingsCloseBtn) {
+    settingsCloseBtn.addEventListener('click', hideSettingsPopup);
+  }
+
+  if (settingsPopup) {
+    settingsPopup.addEventListener('click', (e) => {
+      if (e.target === settingsPopup) {
+        hideSettingsPopup();
+      }
+    });
+  }
+
+  if (settingsSaveBtn) {
+    settingsSaveBtn.addEventListener('click', async () => {
+      const apiKey = settingsApiKey.value.trim();
+      const model = settingsModel.value;
+
+      if (!apiKey) {
+        showSettingsStatus('Please enter an API key', 'error');
+        return;
+      }
+
+      if (!apiKey.startsWith('gsk_')) {
+        showSettingsStatus('Invalid Groq API key format (should start with gsk_)', 'error');
+        return;
+      }
+
+      try {
+        setStorageItem(API_KEY_KEY, apiKey);
+        setStorageItem(MODEL_KEY, model);
+        showSettingsStatus('Settings saved successfully!', 'success');
+        setTimeout(() => {
+          hideSettingsPopup();
+        }, 1500);
+      } catch (error) {
+        showSettingsStatus('Error saving settings', 'error');
+      }
+    });
+  }
+
+  function showSettingsStatus(message, type) {
+    settingsStatus.textContent = message;
+    settingsStatus.className = `status ${type}`;
     
-    // Create new chat on open
-    const newId = `chat_${Date.now()}`;
-    await setCurrentChatId(newId);
-    messagesContainer.innerHTML = '';
-    addMessage('How can I help?', false);
-    await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
-    
-    input.focus();
-  });
+    if (type === 'success') {
+      setTimeout(() => {
+        settingsStatus.style.display = 'none';
+      }, 3000);
+    }
+  }
 
-  // Event listeners for sidebar toggle
-  historyToggleBtn.addEventListener('click', () => {
-    const isOpen = chatHistorySidebar.classList.contains('open');
-    toggleSidebar(!isOpen);
-  });
-
-  sidebarOverlay.addEventListener('click', () => {
-    toggleSidebar(false);
-  });
-
-  // New Chat button: create a new chat id and reset view/history
+  // New Chat button in sidebar: create a new chat id and reset view/history
   const newChatBtn = document.getElementById('new-chat-btn');
   if (newChatBtn) {
     newChatBtn.addEventListener('click', async () => {
       // Delete current chat if it's empty before creating new one
       const currentId = getCurrentChatId();
       await deleteEmptyChat(currentId);
-      
+
       const newId = `chat_${Date.now()}`;
       await setCurrentChatId(newId);
       messagesContainer.innerHTML = '';
@@ -593,36 +752,24 @@
     });
   }
 
-  // Listen for storage changes (when API key is added)
-  chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'local' && changes.apiKey) {
-      // Remove setup message if it exists
-      const setupMessage = document.querySelector('.setup-message');
-      if (setupMessage) {
-        messagesContainer.innerHTML = '';
-        addMessage('How can I help?', false);
-      }
-    }
-  });
+  // Settings button in chat history sidebar is handled above
 
-  // Settings button in chat history sidebar
-  const historySettingsBtn = document.getElementById('history-settings-btn');
-  if (historySettingsBtn) {
-    historySettingsBtn.addEventListener('click', () => {
-      chrome.action.openPopup();
-    });
+  // Initialize the app
+  async function init() {
+    await initCurrentChat();
+    await updateHistoryList();
+    
+    // Create new chat on open
+    const newId = `chat_${Date.now()}`;
+    await setCurrentChatId(newId);
+    messagesContainer.innerHTML = '';
+    addMessage('How can I help?', false);
+    await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+    
+    await checkApiKey();
+    input.focus();
   }
 
-  // Establish connection with background script to detect when sidebar closes
-  chrome.runtime.connect({ name: 'sidepanel' });
-  
-  // Notify when sidebar might be closing and cleanup empty chats
-  window.addEventListener('pagehide', async () => {
-    // Clean up empty chat before closing
-    const currentId = getCurrentChatId();
-    await deleteEmptyChat(currentId);
-    // This is no longer needed, disconnection port will handle it
-    // chrome.runtime.sendMessage({ type: 'SIDEBAR_CLOSED' });
-  });
+  // Start the app
+  init();
 })();
-
