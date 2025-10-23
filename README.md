@@ -72,8 +72,13 @@ php -S localhost:8000
 - Delete conversations you no longer need
 
 ### New Chat
-- Click the "+" button to start a fresh conversation
+- Click the "+" button in the chat history sidebar to start a fresh conversation
 - This creates a new chat without previous context
+
+### Chat URLs
+- Each chat has a unique URL (e.g., `http://localhost:8000/#/c/68f9217b-bf78-8331-b1a7-3b6466ba5b58`)
+- You can bookmark, share, or navigate directly to specific chats
+- Browser back/forward buttons work with chat navigation
 
 ### Webpage Context
 - Toggle "Include webpage context" to let the AI know about the current page
@@ -103,6 +108,20 @@ This application uses the Groq API for AI responses. The API calls are made dire
 ### Supported Models
 - `llama-3.3-70b-versatile` - High-quality responses
 - `llama-3.1-8b-instant` - Fast responses
+
+## URL Routing
+
+QuixAnswer uses hash-based routing for chat URLs:
+
+- **Base URL**: `http://localhost:8000/`
+- **Chat URLs**: `http://localhost:8000/#/c/{chat-id}`
+- **Example**: `http://localhost:8000/#/c/68f9217b-bf78-8331-b1a7-3b6466ba5b58`
+
+### How it works:
+1. Each chat gets a unique UUID v4 identifier
+2. The URL updates automatically when switching chats
+3. Direct navigation to chat URLs loads the specific conversation
+4. Browser back/forward buttons navigate between chats
 
 ## Data Storage
 

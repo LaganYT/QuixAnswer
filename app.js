@@ -28,6 +28,44 @@
   const API_KEY_KEY = 'apiKey';
   const MODEL_KEY = 'model';
 
+  // URL routing
+  function generateChatId() {
+    // Generate a UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  function getChatIdFromUrl() {
+    // Check if we're using hash routing or path routing
+    const hash = window.location.hash;
+    const path = window.location.pathname;
+
+    // Try hash first (e.g., #/c/68f9217b-bf78-8331-b1a7-3b6466ba5b58)
+    if (hash.startsWith('#/c/')) {
+      return hash.substring(4); // Remove '#/c/'
+    }
+
+    // Try path (e.g., /c/68f9217b-bf78-8331-b1a7-3b6466ba5b58)
+    if (path.startsWith('/c/')) {
+      return path.substring(3); // Remove '/c/'
+    }
+
+    return null;
+  }
+
+  function updateUrl(chatId) {
+    // Use hash routing to avoid server configuration issues
+    window.location.hash = `/c/${chatId}`;
+  }
+
+  function clearUrl() {
+    // Clear the URL when on default/no specific chat
+    window.location.hash = '';
+  }
+
   // Current state
   let currentChatId = 'default';
 
@@ -352,7 +390,7 @@
     if (currentId !== chatId) {
       await deleteEmptyChat(currentId);
     }
-    
+
     await setCurrentChatId(chatId);
     const history = await loadHistory();
     messagesContainer.innerHTML = '';
@@ -360,6 +398,14 @@
       addMessage(msg.content, msg.role === 'user');
     }
     await updateHistoryList();
+
+    // Update URL with the new chat ID
+    if (chatId !== 'default') {
+      updateUrl(chatId);
+    } else {
+      clearUrl();
+    }
+
     input.focus();
   }
 
@@ -406,11 +452,12 @@
     
     // Always create a new chat after deleting
     if (chatId === getCurrentChatId()) {
-      const newId = `chat_${Date.now()}`;
+      const newId = generateChatId();
       await setCurrentChatId(newId);
       messagesContainer.innerHTML = '';
       addMessage('How can I help?', false);
       await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+      updateUrl(newId);
     } else {
       await updateHistoryList();
     }
@@ -741,12 +788,13 @@
       const currentId = getCurrentChatId();
       await deleteEmptyChat(currentId);
 
-      const newId = `chat_${Date.now()}`;
+      const newId = generateChatId();
       await setCurrentChatId(newId);
       messagesContainer.innerHTML = '';
       addMessage('How can I help?', false);
       await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
       await updateHistoryList();
+      updateUrl(newId);
       input.value = '';
       input.focus();
     });
@@ -754,20 +802,58 @@
 
   // Settings button in chat history sidebar is handled above
 
+  // Handle URL changes (for browser back/forward buttons)
+  function handleUrlChange() {
+    const urlChatId = getChatIdFromUrl();
+    const currentId = getCurrentChatId();
+
+    if (urlChatId && urlChatId !== currentId) {
+      // Load the chat from URL
+      switchToChat(urlChatId);
+    } else if (!urlChatId && currentId !== 'default') {
+      // Clear to default if no URL chat ID
+      switchToChat('default');
+    }
+  }
+
   // Initialize the app
   async function init() {
-    await initCurrentChat();
-    await updateHistoryList();
-    
-    // Create new chat on open
-    const newId = `chat_${Date.now()}`;
-    await setCurrentChatId(newId);
-    messagesContainer.innerHTML = '';
-    addMessage('How can I help?', false);
-    await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
-    
     await checkApiKey();
+
+    // Check if there's a chat ID in the URL
+    const urlChatId = getChatIdFromUrl();
+    if (urlChatId) {
+      // Try to load the chat from URL
+      const allChats = getStorageItem(STORAGE_KEY) || {};
+      if (allChats[urlChatId]) {
+        // Chat exists, load it
+        await initCurrentChat(); // This will set the stored current chat
+        await switchToChat(urlChatId);
+      } else {
+        // Chat doesn't exist, create a new one
+        const newId = generateChatId();
+        await setCurrentChatId(newId);
+        messagesContainer.innerHTML = '';
+        addMessage('How can I help?', false);
+        await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+        updateUrl(newId);
+      }
+    } else {
+      // No URL chat ID, create new chat
+      await initCurrentChat();
+      const newId = generateChatId();
+      await setCurrentChatId(newId);
+      messagesContainer.innerHTML = '';
+      addMessage('How can I help?', false);
+      await saveHistory([{ role: 'assistant', content: 'How can I help?' }]);
+      updateUrl(newId);
+    }
+
+    await updateHistoryList();
     input.focus();
+
+    // Listen for URL changes
+    window.addEventListener('hashchange', handleUrlChange);
   }
 
   // Start the app
